@@ -8,9 +8,10 @@ var githubClient = new GitHubApi({
 module.exports = function(context, done) {
 	let githubToken = context.data.GITHUB_TOKEN;
 	let milestoneEvent = context.data.milestone;
+	let repo = context.data.repository;
 	let action = context.data.action;
 
-	if (!gitHubToken) {
+	if (!githubToken) {
 		done(null, 'Missing GitHub token.');
 	}
 
@@ -18,6 +19,12 @@ module.exports = function(context, done) {
 		done(null, 'Missing event data.');
 		return;
 	}
+
+	if (!repo) {
+		done(null, 'Missing repo data.');
+		return;
+	}
+
 
 	githubClient.authenticate({
 		type: 'oauth',
@@ -34,11 +41,10 @@ module.exports = function(context, done) {
 		if (openIssues > 0) {
 			console.log('Closing milestone with some open issues.');
 
-			createIssue(githubClient, milestoneEvent.repository.owner.login, milestoneEvent.repository.name,
-				function () {
-					return 'Milestone ' + milestoneEvent.title + ' was closed with ' + openIssues + ' open issues.';
-				},
-				function (err, data) {
+			let title = 'Milestone ' + milestoneEvent.title + ' was closed incorrectly';
+			let body = 'Milestone ' + milestoneEvent.title + ' (' + milestoneEvent.html_url + ') was closed with ' + openIssues + ' open issues. Those issues should have been closed first.';
+
+			createIssue(githubClient, repo.owner.login, repo.name, title, body, function () {
 					done(null, 'The milestone had some open issues! Notification issue has been created.'); 
 				});
 
@@ -47,15 +53,13 @@ module.exports = function(context, done) {
 
 		if (openIssues === 0 && closedIssues === 0) {
 			console.log('Closing milestone without any issues.');
+			
+			let title = 'Milestone ' + milestoneEvent.title + ' was closed incorrectly';
+			let body = 'Milestone ' + milestoneEvent.title + ' (' + milestoneEvent.html_url + ') was closed without any issues. It should have been deleted.';
 
-			createIssue(githubClient, milestoneEvent.repository.owner.login, milestoneEvent.repository.name,
-				function () {
-					return 'Milestone ' + milestoneEvent.title + ' was closed without any issues. It should have been deleted.';
-				},
-				function () { 
+			createIssue(githubClient, repo.owner.login, repo.name, title, body, function () { 
 					done(null, 'The milestone had no issues! Notification issue has been created.');
 				});
-
 
 			return;
 		}
@@ -71,12 +75,12 @@ module.exports = function(context, done) {
 	}
 }
 
-function createIssue(githubClient, owner, repo, messageFn, cb) {
+function createIssue(githubClient, user, repo, title, body, cb) {
 	githubClient.issues.create({
-			owner: owner,
+			user: user,
 			repo: repo,
-			title: messageFn(),
-			body: messageFn()
+			title: title,
+			body: body
 		}, function (err, data) {
 			if (err) {
 				console.log('Error when creating issue.');
