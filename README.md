@@ -1,6 +1,6 @@
 # milestone-checker
 
-A simple Webtask (https://webtask.io) that checks if a GitHub milestone has been properly closed
+A simple Webtask (https://webtask.io) that checks if a GitHub milestone has been properly closed.
 
 # How does it work?
 
